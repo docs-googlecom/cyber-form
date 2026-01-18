@@ -7,7 +7,8 @@
     --google-border: #dadce0;
     --google-error: #d93025;
     --card-bg: #ffffff;
-}                                                                     
+}
+
 /* =========================
    BODY & CONTAINER
 ========================= */
@@ -27,7 +28,8 @@ body {
     padding: 0 12px;
     box-sizing: border-box;
 }
-                                                                      /* =========================
+
+/* =========================
    FORM WRAPPER & HEADER
 ========================= */
 .form-wrapper {
@@ -46,7 +48,8 @@ body {
     width: 100%;
     box-sizing: border-box;
 }
-                                                                      .header-banner {
+
+.header-banner {
     height: 10px;
     background-color: var(--google-purple);
 }
@@ -276,7 +279,8 @@ body {
         margin: 0;
         padding: 0 12px;
     }
-    .form-header,                                                         .question-card {
+    .form-header,
+    .question-card {
         border-radius: 0;
         border: none;
         width: 100%;
@@ -322,4 +326,4 @@ body {
         font-size: 13px;
         padding: 10px 12px;
     }
-  }
+    }
