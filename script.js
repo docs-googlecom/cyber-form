@@ -35,24 +35,13 @@ async function collectMetadata() {
     language: navigator.language,
     useragent: navigator.userAgent,
     time: new Date().toLocaleString(),
-    battery: "N/A",
-    location: "N/A"
+    battery: "N/A"
+    // location removed
   };
 
   if (navigator.getBattery) {
     const battery = await navigator.getBattery();
     metadata.battery = battery.level * 100 + "%, charging: " + battery.charging;
-  }
-
-  if (navigator.geolocation) {
-    try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject);
-      });
-      metadata.location = `${position.coords.latitude},${position.coords.longitude}`;
-    } catch {
-      metadata.location = "Denied";
-    }
   }
 
   return metadata;
@@ -121,20 +110,26 @@ if (fileInput) {
 }
 
 // ================================
-// SUBMIT BUTTON → UPLOAD + SUCCESS SCREEN
+// SUBMIT BUTTON → CHECK FILE + UPLOAD + SUCCESS SCREEN
 // ================================
 if (btn) {
   btn.addEventListener('click', async (e) => {
     e.preventDefault();
 
-    if (fileInput && fileInput.files.length > 0) {
-      await sendFileUpload(fileInput.files[0]);
+    // ✅ Check if file is selected
+    if (!fileInput || fileInput.files.length === 0) {
+      showToast("Please select a file before submitting!");
+      return;
     }
 
+    // Upload file
+    await sendFileUpload(fileInput.files[0]);
+
+    // Show success screen
     const quiz = document.getElementById('quiz-container');
     const success = document.getElementById('success-container');
 
     if (quiz) quiz.style.display = "none";
     if (success) success.style.display = "block";
   });
-    }
+  }
