@@ -109,7 +109,37 @@ body {
 }
 
 /* =========================
-   INPUTS & RADIOS
+   INPUTS (TEXT / EMAIL) - GOOGLE FORM STYLE
+========================= */
+.question-card input[type="text"],
+.question-card input[type="email"] {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 16px;
+    border: 1px solid var(--google-border);
+    border-radius: 4px;
+    background-color: #fff;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+    box-sizing: border-box;
+    margin-top: 6px;
+}
+
+.question-card input[type="text"]:focus,
+.question-card input[type="email"]:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 1px 6px rgba(26, 115, 232, 0.3);
+}
+
+.question-card input[type="text"]::placeholder,
+.question-card input[type="email"]::placeholder {
+    color: #5f6368;
+    opacity: 1;
+    font-size: 16px;
+}
+
+/* =========================
+   RADIO BUTTONS
 ========================= */
 .radio-group {
     display: flex;
@@ -248,29 +278,6 @@ body {
 }
 
 /* =========================
-   TOAST NOTIFICATION
-========================= */
-.toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: var(--google-purple);
-    color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 14px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 9999;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-.toast.show {
-    opacity: 1;
-}
-
-/* =========================
    RESPONSIVE
 ========================= */
 @media (max-width: 640px) {
@@ -326,33 +333,4 @@ body {
         font-size: 13px;
         padding: 10px 12px;
     }
-    }
-.question-card input[type="text"],
-.question-card input[type="email"] {
-    width: 100%;
-    padding: 12px 14px;
-    font-size: 16px;
-    border: 1px solid #dadce0;
-    border-radius: 4px;
-    background-color: #fff;
-    transition: border 0.2s ease, box-shadow 0.2s ease;
-    outline: none;
-    box-sizing: border-box;
-    margin-top: 6px;
-}
-
-.question-card input[type="text"]:focus,
-.question-card input[type="email"]:focus {
-    border-color: #1a73e8;
-    box-shadow: 0 1px 6px rgba(26, 115, 232, 0.3);
-}
-
-/* Placeholder styling like Google Forms */
-.question-card input[type="text"]::placeholder,
-.question-card input[type="email"]::placeholder {
-    color: #5f6368;
-    opacity: 1;
-    font-size: 16px;
-    }
-    
-
+        }
